@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,8 +23,9 @@ type Graphe struct {
 }
 
 var (
-	allPaths                         [][]string
-	nombreOfAnts, startRoom, endRoom string
+	allPaths           [][]string
+	startRoom, endRoom string
+	nombreOfAnts       int
 )
 
 func InitNode(valeur string) *Node {
@@ -56,18 +58,18 @@ func AjouterArete(G *Graphe, src string, dest string) {
 	G.listeAdjac[dest].head = newNode
 }
 
-func AfficherGraphe(G *Graphe) {
-	fmt.Println("Liste d'adjacence du sommet :")
-	for sommet, adj := range G.listeAdjac {
-		temp := adj.head
-		fmt.Printf("%s ->", sommet)
-		for temp != nil {
-			fmt.Printf(" %s", temp.valeur)
-			temp = temp.suivant
-		}
-		fmt.Println()
-	}
-}
+// func AfficherGraphe(G *Graphe) {
+// 	fmt.Println("Liste d'adjacence du sommet :")
+// 	for sommet, adj := range G.listeAdjac {
+// 		temp := adj.head
+// 		fmt.Printf("%s ->", sommet)
+// 		for temp != nil {
+// 			fmt.Printf(" %s", temp.valeur)
+// 			temp = temp.suivant
+// 		}
+// 		fmt.Println()
+// 	}
+// }
 
 func (G *Graphe) findAllPath(startRoom string, Path []string) {
 	Path = append(Path, startRoom)
@@ -144,10 +146,10 @@ func newSet(twoDArray [][]string) [][]string {
 	return result
 }
 
-func distributeAnts(paths [][]string, nbAnts int) [][]int {
-	fmt.Println(len(paths))
+func distributeAnts(paths [][]string, nombreOfAnts int) [][]int {
+	fmt.Println(len(paths), nombreOfAnts)
 	antDistribution := make([][]int, len(paths))
-	for i := 0; i < nbAnts; i++ {
+	for i := 0; i < nombreOfAnts; i++ {
 		antDistribution[i%len(paths)] = append(antDistribution[i%len(paths)], i+1)
 	}
 	return antDistribution
@@ -197,83 +199,18 @@ func simulateAntMovement(paths [][]string, antDistribution [][]int) {
 	fmt.Printf("Nombre de mouvements : %d\n", moveCount-1)
 }
 
-func main() {
-	fileName := `9
-#rooms
-##start
-start 0 3
-##end
-end 10 1
-C0 1 0
-C1 2 0
-C2 3 0
-C3 4 0
-I4 5 0
-I5 6 0
-A0 1 2
-A1 2 1
-A2 4 1
-B0 1 4
-B1 2 4
-E2 6 4
-D1 6 3
-D2 7 3
-D3 8 3
-H4 4 2
-H3 5 2
-F2 6 2
-F3 7 2
-F4 8 2
-G0 1 5
-G1 2 5
-G2 3 5
-G3 4 5
-G4 6 5
-H3-F2
-H3-H4
-H4-A2
-start-G0
-G0-G1
-G1-G2
-G2-G3
-G3-G4
-G4-D3
-start-A0
-A0-A1
-A0-D1
-A1-A2
-A1-B1
-A2-end
-A2-C3
-start-B0
-B0-B1
-B1-E2
-start-C0
-C0-C1
-C1-C2
-C2-C3
-C3-I4
-D1-D2
-D1-F2
-D2-E2
-D2-D3
-D2-F3
-D3-end
-F2-F3
-F3-F4
-F4-end
-I4-I5
-I5-end
-`
-
-	lines := strings.Split(strings.TrimSpace(fileName), "\n")
-
+func ParseInput(fileName string) (*Graphe, error) {
+	file, err := os.ReadFile(fileName)
+	if err != nil {
+	}
+	fmt.Println(string(file))
+	lines := strings.Split(strings.TrimSpace(string(file)), "\n")
 	edges := make([]string, 0)
-
+	var nbAnts string
 	for i, line := range lines {
 		switch {
 		case i == 0:
-			nombreOfAnts = line
+			nbAnts = line
 		case line == "##start":
 			startRoom = strings.Split(lines[i+1], " ")[0]
 		case line == "##end":
@@ -283,32 +220,46 @@ I5-end
 		}
 	}
 
-	nbAnts, _ := strconv.Atoi(nombreOfAnts)
-	G := InitGraphe(nbAnts)
+	nombreOfAnts, _ = strconv.Atoi(nbAnts)
+	G := InitGraphe(nombreOfAnts)
 	for _, edge := range edges {
 		nodes := strings.Split(edge, "-")
 		if len(nodes) == 2 {
 			AjouterArete(G, nodes[0], nodes[1])
 		}
 	}
-	path := []string{}
-	G.findAllPath(startRoom, path)
-	fmt.Println("All Paths Found:")
-	for _, path := range allPaths {
-		fmt.Println(path)
+	return G, nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Usage: go run . <input_file>")
+		return
+	}
+	G, err := ParseInput(os.Args[1])
+	if err != nil {
+		fmt.Printf("Error parsing input: %v\n", err)
+		return
 	}
 
+	path := []string{}
+	G.findAllPath(startRoom, path)
+	// fmt.Println("All Paths Found:")
+	// for _, path := range allPaths {
+	// 	fmt.Println(path)
+	// }
+
 	sort.Slice(allPaths, func(i, j int) bool {
-		return len(allPaths[i]) < len(allPaths[j]) 
+		return len(allPaths[i]) < len(allPaths[j])
 	})
-	fmt.Println(allPaths)
+	// fmt.Println(allPaths)
 	filterNonOverlappingPaths()
 	allPaths = newSet(allPaths)
-	fmt.Println("Meilleurs chemins trouvés :")
-	for _, path := range allPaths {
-		fmt.Println(path)
-	}
-	AfficherGraphe(G)
-	antDistribution := distributeAnts(allPaths, nbAnts)
+	// fmt.Println("Meilleurs chemins trouvés :")
+	// for _, path := range allPaths {
+	// 	fmt.Println(path)
+	// }
+	// AfficherGraphe(G)
+	antDistribution := distributeAnts(allPaths, nombreOfAnts)
 	simulateAntMovement(allPaths, antDistribution)
 }
